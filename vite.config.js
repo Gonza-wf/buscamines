@@ -17,7 +17,7 @@ export default defineConfig({
         theme_color: '#0f1923',
         background_color: '#0f1923',
         display: 'fullscreen',
-        orientation: 'landscape',
+        orientation: 'any',
         start_url: '/buscamines/',
         scope: '/buscamines/',
         icons: [
