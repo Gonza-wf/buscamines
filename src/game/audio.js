@@ -14,9 +14,14 @@ let windNoise;
 let windFilter;
 let droneSynth;
 let birdSynth;
+let cricketSynth;
+let cricketFilter;
 
 let droneLoop;
 let birdLoop;
+let cricketLoop;
+
+let isNightMode = false;
 
 // Escala pentatónica para los descubrimientos en cadena (muy relajante)
 const pentatonicScale = ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5', 'G5', 'A5'];
@@ -110,6 +115,7 @@ export const initAudio = async () => {
   birdSynth.volume.value = -26;
 
   birdLoop = new Tone.Loop(time => {
+    if (isNightMode) return; // No hay pájaros de noche
     if (Math.random() > 0.6) {
       const note = 1000 + Math.random() * 800; // Frecuencias altas (pájaros)
       birdSynth.triggerAttackRelease(note, "16n", time);
@@ -118,6 +124,32 @@ export const initAudio = async () => {
       }
     }
   }, "2m").start(1);
+
+  // Grillos (Ruido blanco filtrado en banda muy alta con pulsos rápidos)
+  cricketSynth = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.05 }
+  });
+  
+  cricketFilter = new Tone.Filter({
+    type: 'bandpass',
+    frequency: 6000,
+    Q: 80
+  }).toDestination();
+  
+  cricketSynth.connect(cricketFilter);
+  cricketSynth.volume.value = -18;
+
+  cricketLoop = new Tone.Loop(time => {
+    if (!isNightMode) return; // Solo de noche
+    // Probabilidad alta de hacer un "chirp"
+    if (Math.random() > 0.4) {
+      const chirps = Math.floor(Math.random() * 3) + 2; // 2 a 4 pulsos rápidos
+      for (let i = 0; i < chirps; i++) {
+        cricketSynth.triggerAttackRelease("64n", time + i * 0.04);
+      }
+    }
+  }, "4n").start(2);
 
   // Iniciar la música de fondo
   Tone.Transport.bpm.value = 60;
@@ -203,14 +235,14 @@ export const resetAudio = (isNight) => {
 
 export const setAudioNightMode = (isNight) => {
   if (!isInitialized) return;
+  isNightMode = isNight;
+  
   if (isNight) {
-    // Ambiente de noche: Grillos (onda cuadrada) y viento más sordo
-    birdSynth.oscillator.type = 'square';
+    // Ambiente de noche: Viento más sordo, grillos
     windFilter.frequency.rampTo(200, 2);
     droneSynth.volume.rampTo(-26, 2);
   } else {
     // Ambiente de día: Pájaros y viento fresco
-    birdSynth.oscillator.type = 'sine';
     windFilter.frequency.rampTo(300, 2);
     droneSynth.volume.rampTo(-22, 2);
   }
