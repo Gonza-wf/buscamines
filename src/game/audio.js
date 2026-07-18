@@ -89,17 +89,47 @@ export const initAudio = async () => {
   }).toDestination();
   droneSynth.volume.value = -22;
 
-  const chords = [
-    ['C3', 'G3', 'C4', 'E4'],
-    ['F2', 'C3', 'A3', 'C4'],
-    ['A2', 'E3', 'C4', 'E4'],
-    ['G2', 'D3', 'B3', 'D4']
+  const progressions = [
+    // 1. Progresión original (Relajante / Estable)
+    [
+      ['C3', 'G3', 'C4', 'E4'],
+      ['F2', 'C3', 'A3', 'C4'],
+      ['A2', 'E3', 'C4', 'E4'],
+      ['G2', 'D3', 'B3', 'D4']
+    ],
+    // 2. Progresión etérea (Modo Lidio / Soñadora)
+    [
+      ['F2', 'A2', 'C3', 'E3'],
+      ['G2', 'B2', 'D3', 'F#3'],
+      ['E2', 'G2', 'B2', 'E3'],
+      ['F2', 'A2', 'C3', 'E3']
+    ],
+    // 3. Progresión suspendida (Misteriosa / Flotante)
+    [
+      ['C3', 'G3', 'D4'],
+      ['F2', 'C3', 'G3'],
+      ['G2', 'D3', 'A3'],
+      ['C3', 'G3', 'D4']
+    ]
   ];
+  let progIndex = 0;
   let chordIndex = 0;
+  let cycleCount = 0;
 
   droneLoop = new Tone.Loop(time => {
-    droneSynth.triggerAttackRelease(chords[chordIndex], "4m", time);
-    chordIndex = (chordIndex + 1) % chords.length;
+    const currentProgression = progressions[progIndex];
+    droneSynth.triggerAttackRelease(currentProgression[chordIndex], "4m", time);
+    
+    chordIndex++;
+    if (chordIndex >= currentProgression.length) {
+      chordIndex = 0;
+      cycleCount++;
+      // Cambiar de melodía suavemente cada 2 ciclos (aprox. 1 minuto)
+      if (cycleCount >= 2) {
+        cycleCount = 0;
+        progIndex = (progIndex + 1) % progressions.length;
+      }
+    }
     // Modular el viento sutilmente para darle vida
     windFilter.frequency.rampTo(250 + Math.random() * 200, 4);
   }, "4m").start(0);

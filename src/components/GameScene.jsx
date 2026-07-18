@@ -181,6 +181,80 @@ const MineModel = ({ exploded }) => {
   );
 };
 
+// ─── Flores de Victoria ───────────────────────────────────────────────────────
+const Flower = ({ position, rotation, delay }) => {
+  const { scale } = useSpring({
+    from: { scale: 0 },
+    to: { scale: 1 },
+    delay: delay,
+    config: { tension: 150, friction: 10, bounce: 0.5 }
+  });
+  
+  const colors = ['#ff4081', '#e040fb', '#ffeb3b', '#00e5ff', '#ff5252'];
+  const petalColor = useMemo(() => colors[Math.floor(Math.random() * colors.length)], []);
+
+  return (
+    <animated.group position={position} rotation={rotation} scale={scale}>
+      {/* Tallo */}
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.2, 5]} />
+        <meshStandardMaterial color="#4caf50" roughness={0.8} />
+      </mesh>
+      {/* Centro */}
+      <mesh position={[0, 0.21, 0]}>
+        <sphereGeometry args={[0.035, 6, 6]} />
+        <meshStandardMaterial color="#ffb300" roughness={0.6} />
+      </mesh>
+      {/* Pétalos */}
+      <mesh position={[0, 0.21, 0]} rotation={[Math.PI/2, 0, 0]}>
+        <torusGeometry args={[0.05, 0.02, 5, 8]} />
+        <meshStandardMaterial color={petalColor} roughness={0.5} />
+      </mesh>
+    </animated.group>
+  );
+};
+
+const FlowerPatch = ({ r, c, maxDist }) => {
+  // Generar entre 2 y 5 flores en posiciones aleatorias
+  const flowers = useMemo(() => {
+    const count = Math.floor(Math.random() * 4) + 2;
+    const arr = [];
+    
+    // Distancia al centro del tablero para el efecto onda (delay)
+    const centerR = 16 / 2;
+    const centerC = 30 / 2;
+    const dist = Math.sqrt((r - centerR) ** 2 + (c - centerC) ** 2);
+    // Normalizar delay
+    const baseDelay = (dist / 15) * 1500; // de 0 a 1500ms aprox
+    
+    for (let i = 0; i < count; i++) {
+      arr.push({
+        id: i,
+        position: [
+          (Math.random() - 0.5) * 0.6,
+          0.25, // sobre la casilla
+          (Math.random() - 0.5) * 0.6
+        ],
+        rotation: [
+          (Math.random() - 0.5) * 0.3,
+          Math.random() * Math.PI,
+          (Math.random() - 0.5) * 0.3
+        ],
+        delay: baseDelay + Math.random() * 300
+      });
+    }
+    return arr;
+  }, [r, c]);
+
+  return (
+    <group>
+      {flowers.map(f => (
+        <Flower key={f.id} position={f.position} rotation={f.rotation} delay={f.delay} />
+      ))}
+    </group>
+  );
+};
+
 // ─── Celda (optimizada para rendimiento) ─────────────────────────────────────
 // Optimizaciones clave:
 //  1. useFrame + lerp en lugar de react-spring (sin overhead de springs)
@@ -188,7 +262,7 @@ const MineModel = ({ exploded }) => {
 //  3. Sin <Edges> (eliminado en favor del GridOverlay compartido)
 //  4. Custom React.memo comparator (evita re-renders innecesarios)
 const Cell = React.memo(({
-  r, c, cellData, onReveal, onFlag, boardOffset, isGameOver, nightMode, animatingCells
+  r, c, cellData, onReveal, onFlag, boardOffset, isGameOver, isGameWon, nightMode, animatingCells
 }) => {
   const x = c * CELL_SIZE - boardOffset.x;
   const z = r * CELL_SIZE - boardOffset.z;
@@ -340,8 +414,14 @@ const Cell = React.memo(({
         <MineModel exploded={cellData.exploded} />
       )}
 
-      {cellData.isFlagged && !cellData.isRevealed && (
+      {/* Flag */}
+      {cellData.isFlagged && !cellData.isRevealed && !isGameWon && (
         <FlagModel nightMode={nightMode} />
+      )}
+      
+      {/* Flores de victoria (aparecen donde están las minas, pisando las banderas) */}
+      {isGameWon && cellData.isMine && (
+        <FlowerPatch r={r} c={c} />
       )}
     </group>
   );
@@ -354,6 +434,7 @@ const Cell = React.memo(({
   prev.cellData.neighborMines === next.cellData.neighborMines &&
   prev.nightMode              === next.nightMode              &&
   prev.isGameOver             === next.isGameOver             &&
+  prev.isGameWon              === next.isGameWon              &&
   prev.onReveal               === next.onReveal               &&
   prev.boardOffset.x          === next.boardOffset.x          &&
   prev.boardOffset.z          === next.boardOffset.z
@@ -398,13 +479,14 @@ const GameScene = ({ board, onReveal, onFlag, difficulty, gameState, nightMode, 
             key={`${r}-${c}`}
             r={r} c={c}
             cellData={cell}
-            onReveal={onReveal}
-            onFlag={onFlag}
-            boardOffset={boardOffset}
-            isGameOver={isGameOver}
-            nightMode={nightMode}
-            animatingCells={animatingCells}
-          />
+              onReveal={onReveal}
+              onFlag={onFlag}
+              boardOffset={boardOffset}
+              isGameOver={isGameOver}
+              isGameWon={gameState === 'won'}
+              nightMode={nightMode}
+              animatingCells={animatingCells}
+            />
         ))
       )}
 
