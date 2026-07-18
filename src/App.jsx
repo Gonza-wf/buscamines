@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { MapControls, Sky } from '@react-three/drei';
+import { MapControls, Sky, Environment } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCcw, Flag, Moon, Sun, Eye, Volume2, VolumeX, HelpCircle, X, Trophy, Maximize, Minimize } from 'lucide-react';
 import * as THREE from 'three';
@@ -312,12 +312,14 @@ function App() {
 
       {/* ── Canvas 3D ── */}
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 18, 12], fov: 45 }} style={{ background: bg }} shadows>
+        <fog attach="fog" args={[bg, 15, 30]} />
+        <Environment preset={nightMode ? "night" : "sunset"} />
         <ambientLight intensity={nightMode ? 0.18 : 0.6} color={nightMode ? '#3a4a6a' : '#fff8e1'} />
         <directionalLight
           position={nightMode ? [-5, 10, -5] : [10, 14, 8]}
           intensity={nightMode ? 0.3 : 1.15}
           color={nightMode ? '#b8d4f0' : '#fff9c4'}
-          castShadow={false}  /* desactivado: el shadow map de 480 celdas es muy costoso en móvil */
+          castShadow={false}
         />
         <Sky distance={450000} {...skyProps} />
 

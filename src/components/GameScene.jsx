@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Text, ContactShadows } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import * as THREE from 'three';
 import BoardDecorations from './BoardDecorations';
@@ -305,8 +305,8 @@ const Cell = React.memo(({
         <boxGeometry args={[CELL_SIZE, 0.5, CELL_SIZE]} />
         <meshStandardMaterial
           color={cellData.isRevealed ? dirtColor : grassColor}
-          roughness={1}
-          metalness={0}
+          roughness={0.75}
+          metalness={0.15}
         />
       </mesh>
 
@@ -364,6 +364,16 @@ const GameScene = ({ board, onReveal, onFlag, difficulty, gameState, nightMode, 
 
   return (
     <group>
+      <ContactShadows 
+        position={[0, -0.49, 0]} 
+        opacity={0.65} 
+        scale={40} 
+        blur={2.5} 
+        far={2} 
+        frames={1} 
+        resolution={256} 
+        color="#000000"
+      />
       {board.map((row, r) =>
         row.map((cell, c) => (
           <Cell
