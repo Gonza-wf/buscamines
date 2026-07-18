@@ -311,7 +311,7 @@ function App() {
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
 
       {/* ── Canvas 3D ── */}
-      <Canvas camera={{ position: [0, 18, 12], fov: 45 }} style={{ background: bg }} shadows>
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 18, 12], fov: 45 }} style={{ background: bg }} shadows>
         <ambientLight intensity={nightMode ? 0.18 : 0.6} color={nightMode ? '#3a4a6a' : '#fff8e1'} />
         <directionalLight
           position={nightMode ? [-5, 10, -5] : [10, 14, 8]}

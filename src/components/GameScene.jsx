@@ -179,32 +179,52 @@ const MineModel = ({ exploded }) => {
 //  3. Sin <Edges> (eliminado en favor del GridOverlay compartido)
 //  4. Custom React.memo comparator (evita re-renders innecesarios)
 const Cell = React.memo(({
-  r, c, cellData, onReveal, onFlag, boardOffset, isGameOver, nightMode,
+  r, c, cellData, onReveal, onFlag, boardOffset, isGameOver, nightMode, animatingCells
 }) => {
   const x = c * CELL_SIZE - boardOffset.x;
   const z = r * CELL_SIZE - boardOffset.z;
 
-  // Refs para animación (sin react-spring)
-  const meshRef   = useRef();
-  const posY      = useRef(cellData.isRevealed ? -0.2 : 0);
-  const scaleYRef = useRef(1);
+  const meshRef = useRef();
   const [hovered, setHovered] = useState(false);
 
-  // Target calculado en render (lectura barata en useFrame via closure)
   const tgtPosY   = cellData.isRevealed ? -0.2 : 0;
   const tgtScaleY = (hovered && !cellData.isRevealed && !isGameOver) ? 1.1 : 1.0;
 
-  // Un único useFrame ligero por celda
-  useFrame((_, delta) => {
-    if (!meshRef.current) return;
-    const dP = tgtPosY   - posY.current;
-    const dS = tgtScaleY - scaleYRef.current;
-    if (Math.abs(dP) < 0.001 && Math.abs(dS) < 0.001) return; // sin cambio → salir
-    posY.current    += dP * Math.min(1, delta * 12);
-    scaleYRef.current += dS * Math.min(1, delta * 18);
-    meshRef.current.position.y = posY.current;
-    meshRef.current.scale.y    = scaleYRef.current;
-  });
+  // Controlador de animación ligero que se suscribe al loop global
+  const controller = useRef({
+    posY: cellData.isRevealed ? -0.2 : 0,
+    scaleY: 1,
+    tgtPosY: cellData.isRevealed ? -0.2 : 0,
+    tgtScaleY: 1,
+    update: (delta) => {
+      if (!meshRef.current) return true;
+      const dP = controller.tgtPosY - controller.posY;
+      const dS = controller.tgtScaleY - controller.scaleY;
+      
+      if (Math.abs(dP) < 0.001 && Math.abs(dS) < 0.001) {
+        meshRef.current.position.y = controller.tgtPosY;
+        meshRef.current.scale.y = controller.tgtScaleY;
+        controller.posY = controller.tgtPosY;
+        controller.scaleY = controller.tgtScaleY;
+        return true; // Terminó la animación, eliminar del Set
+      }
+      
+      controller.posY += dP * Math.min(1, delta * 12);
+      controller.scaleY += dS * Math.min(1, delta * 18);
+      meshRef.current.position.y = controller.posY;
+      meshRef.current.scale.y = controller.scaleY;
+      return false; // Aún animando
+    }
+  }).current;
+
+  // Actualizar targets y suscribir al loop si hay cambios
+  useEffect(() => {
+    controller.tgtPosY = tgtPosY;
+    controller.tgtScaleY = tgtScaleY;
+    if (controller.posY !== tgtPosY || controller.scaleY !== tgtScaleY) {
+      animatingCells.current.add(controller);
+    }
+  }, [tgtPosY, tgtScaleY, animatingCells, controller]);
 
   const grassColor = nightMode ? '#2e7d32' : '#7cb342';
   const dirtColor  = nightMode ? '#4e342e' : '#a1887f';
@@ -324,12 +344,23 @@ const Cell = React.memo(({
 
 // ─── Tablero completo ─────────────────────────────────────────────────────────
 const GameScene = ({ board, onReveal, onFlag, difficulty, gameState, nightMode, particleEvents }) => {
+  const isGameOver = gameState === 'won' || gameState === 'lost' || gameState === 'viewing';
+
   const boardOffset = useMemo(() => ({
     x: (difficulty.cols * CELL_SIZE) / 2 - CELL_SIZE / 2,
     z: (difficulty.rows * CELL_SIZE) / 2 - CELL_SIZE / 2,
   }), [difficulty]);
 
-  const isGameOver = gameState === 'won' || gameState === 'lost' || gameState === 'viewing';
+  // Loop de animación centralizado para las celdas
+  const animatingCells = useRef(new Set());
+  useFrame((_, delta) => {
+    if (animatingCells.current.size === 0) return;
+    for (const cell of animatingCells.current) {
+      if (cell.update(delta)) {
+        animatingCells.current.delete(cell);
+      }
+    }
+  });
 
   return (
     <group>
@@ -344,6 +375,7 @@ const GameScene = ({ board, onReveal, onFlag, difficulty, gameState, nightMode, 
             boardOffset={boardOffset}
             isGameOver={isGameOver}
             nightMode={nightMode}
+            animatingCells={animatingCells}
           />
         ))
       )}
