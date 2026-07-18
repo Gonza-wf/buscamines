@@ -113,9 +113,18 @@ const FlagModel = ({ nightMode }) => {
         <meshStandardMaterial color="#bdbdbd" metalness={0.8} roughness={0.2} />
       </mesh>
       <mesh castShadow position={[0, 0.535, 0]}>
-        <sphereGeometry args={[0.035, 8, 8]} />
-        <meshStandardMaterial color="#e0e0e0" metalness={0.9} roughness={0.1} />
+        <sphereGeometry args={[nightMode ? 0.045 : 0.035, 8, 8]} />
+        <meshStandardMaterial 
+          color={nightMode ? "#fff176" : "#e0e0e0"} 
+          emissive={nightMode ? "#fbc02d" : "#000000"} 
+          emissiveIntensity={nightMode ? 2 : 0} 
+          metalness={nightMode ? 0 : 0.9} 
+          roughness={nightMode ? 1 : 0.1} 
+        />
       </mesh>
+      {nightMode && (
+        <pointLight position={[0, 0.6, 0]} distance={1.8} intensity={1.5} color="#fff176" decay={2} />
+      )}
       <group ref={flagRef} position={[0.01, 0.42, 0]}>
         <mesh castShadow>
           <shapeGeometry args={[pennantShape]} />
@@ -243,12 +252,15 @@ const Cell = React.memo(({
     setPressProgress(0);
   }, []);
 
+  const touchStartPos = useRef({ x: 0, y: 0 });
+
   const handlePointerDown = useCallback((e) => {
     e.stopPropagation();
     if (isGameOver) return;
     // Si la celda ya está revelada, solo permitir chording (no long-press)
     if (cellData.isRevealed) return;
     movedRef.current = false;
+    touchStartPos.current = { x: e.clientX, y: e.clientY };
     pressStart.current = performance.now();
 
     const animate = () => {
@@ -267,9 +279,15 @@ const Cell = React.memo(({
     }, HOLD_MS);
   }, [isGameOver, cellData.isRevealed, onFlag, r, c]);
 
-  const handlePointerMove = useCallback(() => {
-    movedRef.current = true;
-    cancelPress();
+  const handlePointerMove = useCallback((e) => {
+    if (movedRef.current) return; // Ya marcado como movido
+    const dx = e.clientX - touchStartPos.current.x;
+    const dy = e.clientY - touchStartPos.current.y;
+    // Threshold de 8px: Si el dedo se mueve más de 8 píxeles, cancelar tap.
+    if (dx * dx + dy * dy > 64) {
+      movedRef.current = true;
+      cancelPress();
+    }
   }, [cancelPress]);
 
   const handlePointerUp = useCallback((e) => {
