@@ -122,8 +122,18 @@ const FlagModel = ({ nightMode }) => {
           roughness={nightMode ? 1 : 0.1} 
         />
       </mesh>
+      {/* Luz falsa: disco aditivo bajo la bandera para simular iluminación sin coste de CPU/GPU */}
       {nightMode && (
-        <pointLight position={[0, 0.6, 0]} distance={1.8} intensity={1.5} color="#fff176" decay={2} />
+        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.5, 16]} />
+          <meshBasicMaterial 
+            color="#fbc02d" 
+            transparent 
+            opacity={0.15} 
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
       )}
       <group ref={flagRef} position={[0.01, 0.42, 0]}>
         <mesh castShadow>
